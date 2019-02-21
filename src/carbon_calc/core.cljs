@@ -6,61 +6,43 @@
 ;; -------------------------
 ;; Views
 
-(def bmi-data (r/atom {:height 180 :weight 80}))
-
-(defn calc-bmi []
-  (let [{:keys [height weight bmi] :as data} @bmi-data
-        h (/ height 100)]
-    (if (nil? bmi)
-      (assoc data :bmi (/ weight (* h h)))
-      (assoc data :weight (* bmi h h)))))
-
-(defn slider [param value min max]
-  [:input {:type "range" :value value :min min :max max
-           :style {:width "100%"}
-           :on-change (fn [e]
-                        (swap! bmi-data assoc param (.. e -target -value))
-                        (when (not= param :bmi)
-                          (swap! bmi-data assoc :bmi nil)))}])
-
-(defn bmi-component []
-  (let [{:keys [weight height bmi]} (calc-bmi)
-        [color diagnose] (cond
-                           (< bmi 18.5) ["orange" "underweight"]
-                           (< bmi 25) ["inherit" "normal"]
-                           (< bmi 30) ["orange" "overweight"]
-                           :else ["red" "obese"])]
-    [:div
-     [:h3 "BMI calculator"]
-     [:div
-      "Height: " (int height) "cm"
-      [slider :height height 100 220]]
-     [:div
-      "Weight: " (int weight) "kg"
-      [slider :weight weight 30 150]]
-     [:div
-      "BMI: " (int bmi) " "
-      [:span {:style {:color color}} diagnose]
-      [slider :bmi bmi 10 50]]]))
-
 
 (def assumptions (r/atom {:allowance-floor-price 16
                           :offsets-cap 8
                           :offset-benefiting-oregon 50
                           :offset-discount 20}))
 
-(def exempts (r/atom (set '(:other-electricity))))
+(def exempts (r/atom {:ele-uti false
+                      :dir-ele-ser-sup false
+                      :oth-ele false
+                      :nat-gas-uti false
+                      :nat-gas-mar false
+                      :dir-reg-man-poi-sou false
+                      :oth-poi-sou false
+                      :non-roa false
+                      :on-roa false}))
 
-(def allowances (r/atom {:electric-utilities 1.0
-                         :direct-electricity-service-suppliers 0}))
+(def allowances (r/atom {:ele-uti 4
+                         :dir-ele-ser-sup 0
+                         :oth-ele 0
+                         :nat-gas-uti 20
+                         :nat-gas-mar 0
+                         :dir-reg-man-poi-sou 100
+                         :oth-poi-sou 0
+                         :non-roa 0
+                         :on-roa 40}))
 
-(def results (r/atom {}))
+(def totals (r/atom nil))
 
-(defn calc-carbon []
-  (let [{:keys [:allowance-floor-price :offsets-cap :offset-benefiting-oregon :offset-discount] :as assumptions} @assumptions
-        {:keys [:sum] :as results} @results]
-    (if (nil? sum)
-      (assoc results :sum  (sum (vals assumptions))))))
+(def constants {:assumed-emissions {:ele-uti 13.33
+                                    :dir-ele-ser-sup 0.72
+                                    :oth-ele 3.46
+                                    :nat-gas-uti 4.10
+                                    :nat-gas-mar 1.02
+                                    :dir-reg-man-poi-sou 2.54
+                                    :oth-poi-sou 0.99
+                                    :non-roa 4.25
+                                    :on-roa 20.73}})
 
 (defn assumptions-slider [param value min max]
   [:input {:type "range" :value value :min min :max max
@@ -68,7 +50,7 @@
            :on-change (fn [e]
                         (swap! assumptions assoc param (.. e -target -value))
                         (when (not= param :sum)
-                          (swap! results assoc :sum nil)))}])
+                          (swap! totals assoc :sum nil)))}])
 
 (defn assumptions-table []
   (let [{:keys [:allowance-floor-price :offsets-cap :offset-benefiting-oregon :offset-discount] :as assumptions} @assumptions]
@@ -89,32 +71,111 @@
                        [0 "assumption" 1 "slider" 2 "value"]
                        {:show-head? false})]))
 
+
+
+(defn category-slider [param]
+  [:div
+   [:div (str (@allowances param) "%")]
+   [:input {:type "range" :value (@allowances param) :min 0 :max 100
+            :style {:width "100%"}
+            :on-change (fn [e]
+                         (swap! allowances assoc param (.. e -target -value))
+                         (when (not= param :sum)
+                           (swap! totals assoc :sum nil)))}]])
+
+(defn- switch-exempt [category]
+  (fn [e] (swap! exempts update category not)))
+
+(defn category-checkbox [param]
+  [:div
+   [:div (str (@exempts param))]
+   [:input {:type :checkbox
+            :value (str (@exempts param))
+            :checked (when (@exempts param) "checked")
+            :on-click (switch-exempt param)}]])
+
+(defn max-pot-revenue [param]
+  (if (@exempts param) 0
+      (* (param (:assumed-emissions constants))
+         1000000
+         (:allowance-floor-price @assumptions))))
+
+(defn pot-rein-rev-lost [param]
+  (if (and (not (@exempts param))
+           (> (@assumptions :offset-discount) 0)
+           (< (@allowances param) 100))
+    (* (param (:assumed-emissions constants))
+       10000
+       (min (- 100 (@allowances param))
+            (@assumptions :offsets-cap))
+       (:allowance-floor-price @assumptions))
+    0))
+
+(defn rein-rev-lost [param]
+  (if (@exempts param) 0
+      (* (param (:assumed-emissions constants))
+         (param @allowances)
+         (:allowance-floor-price @assumptions)
+         10000)))
+
+(defn category-row [name cat-key]
+  [name
+   (cat-key (:assumed-emissions constants))
+   "26%"
+   [category-checkbox cat-key]
+   [category-slider cat-key]
+   (max-pot-revenue cat-key)
+   (pot-rein-rev-lost cat-key)
+   (rein-rev-lost cat-key)
+   (- (max-pot-revenue cat-key) (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))
+   0
+   (- (+ (max-pot-revenue cat-key) (cat-key (:transport-decarb-account constants)))
+      (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))
+   ""
+   "0%"])
+
+(defn totals-row []
+  ["Total Covered Emissions4"
+   (reduce + (vals (:assumed-emissions constants)))
+   "100%"
+   ""
+   ""
+   (reduce + (map max-pot-revenue '(:ele-uti)))
+   "42"
+   "27"
+   "15"
+   "31"
+   "47"
+   "100%"])
+
+
 (defn category-table []
-  (let [{:keys [:allowance-floor-price :offsets-cap :offset-benefiting-oregon :offset-discount] :as assumptions} @assumptions]
+  (let [a 1]
     [:fieldset
      [:legend "Category Table"]
-     (table/to-table1d (list ["Electric Utilities"
-                              13.33
-                              "26%"
-                              "No"
-                              "100%"
-                              "$223,544,100"
-                              ""
-                              ""
-                              ""
-                              "0%"])
+     (table/to-table1d (list (category-row "Electric Utilities" :ele-uti)
+                             (category-row "Direct Electricity Service Suppliers" :dir-ele-ser-sup)
+                             (category-row "Other Electricity (exported out of state)" :oth-ele)
+                             (category-row "Natural Gas Utilities" :nat-gas-uti)
+                             (category-row "Natural Gas Marketers4" :nat-gas-mar)
+                             (category-row "Directly Regulated Manufacturing Point Sources" :dir-reg-man-poi-sou)
+                             (category-row "Other Points Sources (i.e., landfills, gas compressors)" :oth-poi-sou)
+                             (category-row "Non-road Fuels" :non-roa)
+                             (assoc (category-row "On-road Fuels" :on-roa) 9 (- (max-pot-revenue :on-roa) (pot-rein-rev-lost :on-roa)))
 
+                             (totals-row))
                        [0 "Emissions Covered by the Cap"
                         1 "2021 Assumed Emissions3 (in Million MTCo2r)"
                         2 "% of regulated emissions"
                         3 "Exempted from being Covered?"
                         4 "Free allowances allocated"
-                        5 "Potential Reinvestment Revenues lost to Offsets"
-                        6 "Reinvestment Revenues lost to Free Allowances"
-                        7 "Proceeds to Climate Investment Fund"
-                        8 "Proceeds to Transportation Decarbonization Account"
-                        9 "Total Net Reinvestment Proceeds"
-                        10 "% of total Proceeds"]
+                        5 "Maximum Potential Revenue"
+                        6 "Potential Reinvestment Revenues lost to Offsets"
+                        7 "Reinvestment Revenues lost to Free Allowances"
+                        8 "Proceeds to Climate Investment Fund"
+                        9 "Proceeds to Transportation Decarbonization Account"
+                        10 "Total Net Reinvestment Proceeds"
+                        11 "% of total Proceeds"]
                        {:show-head? true})]))
 
 (defn home-page []
@@ -122,10 +183,6 @@
    [:h2 "Oregon Climate Action Plan (HB 2020)_Reinvestment Proceeds Estimates"]
    [assumptions-table]
    [category-table]])
-   ;;[bmi-component]])
-
-
-
 
 ;; -------------------------
 ;; Initialize app
