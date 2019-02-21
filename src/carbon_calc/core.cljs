@@ -14,7 +14,7 @@
 
 (def exempts (r/atom {:ele-uti false
                       :dir-ele-ser-sup false
-                      :oth-ele false
+                      :oth-ele true
                       :nat-gas-uti false
                       :nat-gas-mar false
                       :dir-reg-man-poi-sou false
@@ -55,7 +55,7 @@
 (defn assumptions-table []
   (let [{:keys [:allowance-floor-price :offsets-cap :offset-benefiting-oregon :offset-discount] :as assumptions} @assumptions]
     [:fieldset
-     [:legend "Assumptions Table"]
+     [:legend [:h3 "Assumptions Table"]]
      (table/to-table1d (list ["Allowance Reserve Floor Price, $/mmCO2e1   ($14.53 in 2018, projected to be $16.77 in 2021 in 2018 dollars)"
                               [assumptions-slider :allowance-floor-price allowance-floor-price  0 100]
                               (str "$" allowance-floor-price ".00")]
@@ -118,41 +118,54 @@
          (:allowance-floor-price @assumptions)
          10000)))
 
+(def all-cat-keys #{:ele-uti :dir-ele-ser-sup :oth-ele :nat-gas-uti :nat-gas-mar :dir-reg-man-poi-sou :oth-poi-sou :non-roa :on-roa})
+
+(defn total-cash-minus-special []
+  (reduce + (map #(- (max-pot-revenue %) (+ (pot-rein-rev-lost %) (rein-rev-lost %)))
+                 (disj all-cat-keys :on-roa))))
+
+(defn to-transport-decarb-account []
+  (- (max-pot-revenue :on-roa) (pot-rein-rev-lost :on-roa)))
+
+(defn big-total []
+  (+ (total-cash-minus-special) (to-transport-decarb-account)))
+
 (defn category-row [name cat-key]
-  [name
-   (cat-key (:assumed-emissions constants))
-   "26%"
-   [category-checkbox cat-key]
-   [category-slider cat-key]
-   (max-pot-revenue cat-key)
-   (pot-rein-rev-lost cat-key)
-   (rein-rev-lost cat-key)
-   (- (max-pot-revenue cat-key) (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))
-   0
-   (- (+ (max-pot-revenue cat-key) (cat-key (:transport-decarb-account constants)))
-      (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))
-   ""
-   "0%"])
+  (let [total (- (max-pot-revenue cat-key)
+                 (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))]
+    [name
+     (cat-key (:assumed-emissions constants))
+     "26%"
+     [category-checkbox cat-key]
+     [category-slider cat-key]
+     (max-pot-revenue cat-key)
+     (pot-rein-rev-lost cat-key)
+     (rein-rev-lost cat-key)
+     total
+     0
+     total
+     (str (/ total (big-total)) "%")]))
+
+
 
 (defn totals-row []
-  ["Total Covered Emissions4"
-   (reduce + (vals (:assumed-emissions constants)))
-   "100%"
-   ""
-   ""
-   (reduce + (map max-pot-revenue '(:ele-uti)))
-   "42"
-   "27"
-   "15"
-   "31"
-   "47"
-   "100%"])
-
+    ["Total Covered Emissions4"
+     (reduce + (vals (:assumed-emissions constants)))
+     "100%"
+     ""
+     ""
+     (reduce + (map max-pot-revenue all-cat-keys))
+     (reduce + (map pot-rein-rev-lost all-cat-keys))
+     (reduce + (map rein-rev-lost all-cat-keys))
+     (total-cash-minus-special)
+     (to-transport-decarb-account)
+     (big-total)
+     "100%"])
 
 (defn category-table []
   (let [a 1]
     [:fieldset
-     [:legend "Category Table"]
+     [:legend [:h3 "Category Table"]]
      (table/to-table1d (list (category-row "Electric Utilities" :ele-uti)
                              (category-row "Direct Electricity Service Suppliers" :dir-ele-ser-sup)
                              (category-row "Other Electricity (exported out of state)" :oth-ele)
@@ -161,8 +174,9 @@
                              (category-row "Directly Regulated Manufacturing Point Sources" :dir-reg-man-poi-sou)
                              (category-row "Other Points Sources (i.e., landfills, gas compressors)" :oth-poi-sou)
                              (category-row "Non-road Fuels" :non-roa)
-                             (assoc (category-row "On-road Fuels" :on-roa) 9 (- (max-pot-revenue :on-roa) (pot-rein-rev-lost :on-roa)))
-
+                             (-> (category-row "On-road Fuels" :on-roa)
+                               (assoc 9 (to-transport-decarb-account))
+                               (assoc 8 0))
                              (totals-row))
                        [0 "Emissions Covered by the Cap"
                         1 "2021 Assumed Emissions3 (in Million MTCo2r)"
