@@ -144,7 +144,7 @@
      total
      0
      total
-     (str (/ total (big-total)) "%")]))
+     (str (int (* 100 (/ total (big-total)))) "%")]))
 
 
 
