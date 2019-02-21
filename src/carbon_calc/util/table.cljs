@@ -32,7 +32,8 @@
                           th-attrs
                           data-tr-attrs
                           data-td-attrs
-                          data-value-transform]}]
+                          data-value-transform
+                          show-head?]}]
    {:pre [(every? (some-fn nil? map? fn?)
                   [table-attrs thead-attrs tbody-attrs th-attrs data-tr-attrs data-td-attrs data-value-transform])]}
    (let [x-labels (if (vector? x-labels)
@@ -42,7 +43,7 @@
       table-attrs
       [:thead
        thead-attrs
-       (render-row :th nil nil th-attrs nil (into {} (map vec x-labels)))] ;;        (render-row :th x-labels nil th-attrs nil (into {} (map vec x-labels)))]
+       (render-row :th (when show-head? x-labels) nil th-attrs nil (into {} (map vec x-labels)))] ;;        (render-row :th x-labels nil th-attrs nil (into {} (map vec x-labels)))]
       [:tbody
        tbody-attrs
        (map (partial render-row :td x-labels data-tr-attrs data-td-attrs data-value-transform)

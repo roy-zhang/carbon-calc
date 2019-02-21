@@ -86,13 +86,42 @@
                              ["Offsets Price Discount Relative to Allowance Price"
                               [assumptions-slider :offset-discount offset-discount 0 100]
                               (str offset-discount "%")])
-                       [0 "assumption" 1 "slider" 2 "value"])]))
+                       [0 "assumption" 1 "slider" 2 "value"]
+                       {:show-head? false})]))
 
+(defn category-table []
+  (let [{:keys [:allowance-floor-price :offsets-cap :offset-benefiting-oregon :offset-discount] :as assumptions} @assumptions]
+    [:fieldset
+     [:legend "Category Table"]
+     (table/to-table1d (list ["Electric Utilities"
+                              13.33
+                              "26%"
+                              "No"
+                              "100%"
+                              "$223,544,100"
+                              ""
+                              ""
+                              ""
+                              "0%"])
+
+                       [0 "Emissions Covered by the Cap"
+                        1 "2021 Assumed Emissions3 (in Million MTCo2r)"
+                        2 "% of regulated emissions"
+                        3 "Exempted from being Covered?"
+                        4 "Free allowances allocated"
+                        5 "Potential Reinvestment Revenues lost to Offsets"
+                        6 "Reinvestment Revenues lost to Free Allowances"
+                        7 "Proceeds to Climate Investment Fund"
+                        8 "Proceeds to Transportation Decarbonization Account"
+                        9 "Total Net Reinvestment Proceeds"
+                        10 "% of total Proceeds"]
+                       {:show-head? true})]))
 
 (defn home-page []
   [:div
-   [:h2 "Carbon Tax Calculator"]
-   [assumptions-table]])
+   [:h2 "Oregon Climate Action Plan (HB 2020)_Reinvestment Proceeds Estimates"]
+   [assumptions-table]
+   [category-table]])
    ;;[bmi-component]])
 
 
