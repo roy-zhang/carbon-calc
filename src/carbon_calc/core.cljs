@@ -34,15 +34,19 @@
 
 (def totals (r/atom nil))
 
-(def constants {:assumed-emissions {:ele-uti 13.33
-                                    :dir-ele-ser-sup 0.72
-                                    :oth-ele 3.46
-                                    :nat-gas-uti 4.10
-                                    :nat-gas-mar 1.02
-                                    :dir-reg-man-poi-sou 2.54
-                                    :oth-poi-sou 0.99
-                                    :non-roa 4.25
-                                    :on-roa 20.73}})
+(def assumed-emissions {:ele-uti 13.33
+                        :dir-ele-ser-sup 0.72
+                        :oth-ele 3.46
+                        :nat-gas-uti 4.10
+                        :nat-gas-mar 1.02
+                        :dir-reg-man-poi-sou 2.54
+                        :oth-poi-sou 0.99
+                        :non-roa 4.25
+                        :on-roa 20.73})
+
+(def constants (assoc-in {:assumed-emissions assumed-emissions} [:assumed-emissions :total]
+                         (reduce + (vals assumed-emissions))))
+
 
 (defn assumptions-slider [param value min max]
   [:input {:type "range" :value value :min min :max max
@@ -130,12 +134,15 @@
 (defn big-total []
   (+ (total-cash-minus-special) (to-transport-decarb-account)))
 
+
+
 (defn category-row [name cat-key]
   (let [total (- (max-pot-revenue cat-key)
                  (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))]
     [name
      (cat-key (:assumed-emissions constants))
-     "26%"
+     (str (int (* 100 (/ (cat-key (:assumed-emissions constants))
+                         (:total (:assumed-emissions constants))))) "%")
      [category-checkbox cat-key]
      [category-slider cat-key]
      (max-pot-revenue cat-key)
@@ -150,7 +157,7 @@
 
 (defn totals-row []
     ["Total Covered Emissions4"
-     (reduce + (vals (:assumed-emissions constants)))
+     (:total (:assumed-emissions constants))
      "100%"
      ""
      ""
