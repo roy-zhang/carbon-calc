@@ -1,8 +1,9 @@
 (ns carbon-calc.core
     (:require
       [reagent.core :as r]
-      [ carbon-calc.util.table :as table]))
-
+      [carbon-calc.util.table :as table]
+      [goog.string :as gstring]
+      [goog.string.format]))
 ;; -------------------------
 ;; Views
 
@@ -76,7 +77,6 @@
                        {:show-head? false})]))
 
 
-
 (defn category-slider [param]
   [:div
    [:div (str (@allowances param) "%")]
@@ -98,11 +98,28 @@
             :checked (when (@exempts param) "checked")
             :on-click (switch-exempt param)}]])
 
+(defn comma-money [cash]
+  (->> (str cash)
+    reverse
+    (partition-all 3)
+    (map (partial apply str))
+    (clojure.string/join ",")
+    reverse
+    (apply str)))
+
+
+(defn round-up [num]
+  (let [i (int num)]
+    (if (> (- num i) 0.5)
+      (inc i)
+      i)))
+
 (defn max-pot-revenue [param]
   (if (@exempts param) 0
+    (round-up
       (* (param (:assumed-emissions constants))
          1000000
-         (:allowance-floor-price @assumptions))))
+         (:allowance-floor-price @assumptions)))))
 
 (defn pot-rein-rev-lost [param]
   (if (and (not (@exempts param))
@@ -145,12 +162,12 @@
                          (:total (:assumed-emissions constants))))) "%")
      [category-checkbox cat-key]
      [category-slider cat-key]
-     (max-pot-revenue cat-key)
-     (pot-rein-rev-lost cat-key)
-     (rein-rev-lost cat-key)
-     total
+     (comma-money (max-pot-revenue cat-key))
+     (comma-money (pot-rein-rev-lost cat-key))
+     (comma-money (rein-rev-lost cat-key))
+     (comma-money total)
      0
-     total
+     (comma-money total)
      (str (int (* 100 (/ total (big-total)))) "%")]))
 
 
@@ -161,12 +178,12 @@
      "100%"
      ""
      ""
-     (reduce + (map max-pot-revenue all-cat-keys))
-     (reduce + (map pot-rein-rev-lost all-cat-keys))
-     (reduce + (map rein-rev-lost all-cat-keys))
-     (total-cash-minus-special)
-     (to-transport-decarb-account)
-     (big-total)
+     (comma-money (reduce + (map max-pot-revenue all-cat-keys)))
+     (comma-money (reduce + (map pot-rein-rev-lost all-cat-keys)))
+     (comma-money (reduce + (map rein-rev-lost all-cat-keys)))
+     (comma-money (total-cash-minus-special))
+     (comma-money  (to-transport-decarb-account))
+     (comma-money (big-total))
      "100%"])
 
 (defn category-table []
@@ -182,7 +199,7 @@
                              (category-row "Other Points Sources (i.e., landfills, gas compressors)" :oth-poi-sou)
                              (category-row "Non-road Fuels" :non-roa)
                              (-> (category-row "On-road Fuels" :on-roa)
-                               (assoc 9 (to-transport-decarb-account))
+                               (assoc 9 (comma-money (to-transport-decarb-account)))
                                (assoc 8 0))
                              (totals-row))
                        [0 "Emissions Covered by the Cap"
