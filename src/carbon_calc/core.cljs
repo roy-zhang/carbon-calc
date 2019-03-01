@@ -1,14 +1,11 @@
 (ns carbon-calc.core
     (:require
       [reagent.core :as r]
-      [carbon-calc.util.table :as table]
-      [goog.string :as gstring]
-      [goog.string.format]))
+      [carbon-calc.util.table :as table]))
 ;; -------------------------
 ;; Views
 
-
-(def assumptions (r/atom {:allowance-floor-price 16
+(def assumptions (r/atom {:allowance-floor-price 16.77
                           :offsets-cap 8
                           :offset-benefiting-oregon 50
                           :offset-discount 20}))
@@ -32,7 +29,6 @@
                          :oth-poi-sou 0
                          :non-roa 0
                          :on-roa 40}))
-
 (def totals (r/atom nil))
 
 (def assumed-emissions {:ele-uti 13.33
@@ -62,7 +58,7 @@
     [:fieldset
      [:legend [:h3 "Assumptions Table"]]
      (table/to-table1d (list ["Allowance Reserve Floor Price, $/mmCO2e1   ($14.53 in 2018, projected to be $16.77 in 2021 in 2018 dollars)"
-                              [assumptions-slider :allowance-floor-price allowance-floor-price  0 100]
+                              [assumptions-slider :allowance-floor-price allowance-floor-price  0 100.00]
                               (str "$" allowance-floor-price ".00")]
                              ["Offsets Cap (relative to each entities' GHG emissions)"
                               [assumptions-slider :offsets-cap offsets-cap 0 100]
@@ -151,8 +147,6 @@
 (defn big-total []
   (+ (total-cash-minus-special) (to-transport-decarb-account)))
 
-
-
 (defn category-row [name cat-key]
   (let [total (- (max-pot-revenue cat-key)
                  (+ (pot-rein-rev-lost cat-key) (rein-rev-lost cat-key)))]
@@ -169,8 +163,6 @@
      0
      (comma-money total)
      (str (int (* 100 (/ total (big-total)))) "%")]))
-
-
 
 (defn totals-row []
     ["Total Covered Emissions4"
