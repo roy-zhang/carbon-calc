@@ -130,10 +130,11 @@
 
 (defn rein-rev-lost [param]
   (if (@exempts param) 0
-      (* (param (:assumed-emissions constants))
-         (param @allowances)
-         (:allowance-floor-price @assumptions)
-         10000)))
+      (round-up
+        (* (param (:assumed-emissions constants))
+           (param @allowances)
+           (:allowance-floor-price @assumptions)
+           10000))))
 
 (def all-cat-keys #{:ele-uti :dir-ele-ser-sup :oth-ele :nat-gas-uti :nat-gas-mar :dir-reg-man-poi-sou :oth-poi-sou :non-roa :on-roa})
 
