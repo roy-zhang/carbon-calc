@@ -61,7 +61,7 @@
                               [assumptions-slider :allowance-floor-price allowance-floor-price  0 100.00]
                               (str "$" allowance-floor-price ".00")]
                              ["Offsets Cap (relative to each entities' GHG emissions)"
-                              [assumptions-slider :offsets-cap offsets-cap 0 100]
+                              [assumptions-slider :offsets-cap offsets-cap 0 8]
                               (str offsets-cap "%")]
                              ["Offsets % that must directly benefit Oregon"
                               [assumptions-slider :offset-benefiting-oregon offset-benefiting-oregon 0 100]
