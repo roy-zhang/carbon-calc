@@ -59,7 +59,7 @@
      [:legend [:h3 "Assumptions Table"]]
      (table/to-table1d (list ["Allowance Reserve Floor Price, $/mmCO2e1   ($14.53 in 2018, projected to be $16.77 in 2021 in 2018 dollars)"
                               [assumptions-slider :allowance-floor-price allowance-floor-price  0 100.00]
-                              (str "$" allowance-floor-price ".00")]
+                              (str "$" allowance-floor-price)]
                              ["Offsets Cap (relative to each entities' GHG emissions)"
                               [assumptions-slider :offsets-cap offsets-cap 0 8]
                               (str offsets-cap "%")]
@@ -102,7 +102,6 @@
     (clojure.string/join ",")
     reverse
     (apply str)))
-
 
 (defn round-up [num]
   (let [i (int num)]
