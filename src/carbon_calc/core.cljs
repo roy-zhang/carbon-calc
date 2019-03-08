@@ -204,7 +204,7 @@
                         6 "Potential Reinvestment Revenues lost to Offsets"
                         7 "Reinvestment Revenues lost to Free Allowances"
                         8 "Proceeds to Climate Investment Fund"
-                        9 "Proceeds to Transportation Decarbonization Account"
+                        9 "Highway Trust Fund"
                         10 "Total Net Reinvestment Proceeds"
                         11 "% of total Proceeds"]
                        {:show-head? true})]))
